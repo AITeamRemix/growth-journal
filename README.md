@@ -113,14 +113,19 @@ git clone https://github.com/AITeamRemix/growth-journal.git
 ### 2. Dependency 설치
 
 - [poetry](https://python-poetry.org/docs/) 를 사용해서 의존성을 관리합니다.
+
+- 만약, upstage 에서 제공 받은 cloud instance 에서 진행한다면, 아래 명령어를 먼저 실행해주세요.
+    ```bash
+    bash init-instance.sh
+    ```
 - 아래의 명령을 실행해서 poetry 및 의존성을 설치합니다.
 
-```bash
-pip install -U pip setuptools
-pip install poetry
-poetry install --with dev
-pre-commit install
-```
+    ```shell
+    pip install -U pip setuptools
+    pip install poetry
+    poetry install --with dev
+    pre-commit install
+    ```
 
 ### 3. 다음 과정을 반복
 
