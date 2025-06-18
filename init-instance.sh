@@ -42,6 +42,15 @@ echo "Python 버전 확인:"
 python --version
 python -c "import ssl, bz2, curses, ctypes, readline; print('모든 필수 모듈이 정상적으로 로드되었습니다.')"
 
-echo ""
-echo "새 터미널 세션을 시작하거나 다음 명령어를 실행하여 환경을 다시 로드하세요:"
-echo "source /root/.bashrc"
+echo "환경 다시 로드"
+source /root/.bashrc
+
+echo "poetry 설치"
+pip install -U pip setuptools
+pip install poetry
+
+echo "poetry 를 사용해서 의존성 설치"
+poetry install --with dev
+
+echo "코드 스타일 통일화를 위해 pre-commit 설정"
+pre-commit install
