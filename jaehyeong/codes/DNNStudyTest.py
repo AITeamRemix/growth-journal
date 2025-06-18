@@ -1,0 +1,139 @@
+# nn.Module 이란?
+# PyTorch에서 딥러닝 모델은 nn.Module이라는 클래스를 상속받아 만들게 돼 있다.
+# nn.Module은 PyTorch에서 모델의 뼈대 역할을 하는 클래스.
+
+
+import torch.nn as nn
+
+class DNN(nn.Module):  # nn.Module을 상속
+    def __init__(self):
+        super().__init__()
+
+## nn.Module의 기능
+## 모델 안에 있는 모든 레이어 들을 자동으로 추적해줌.
+## .to(device)로 GPU올릴 수 있음
+## .parameters()로 모든 파라미터 꺼내줌
+## .train() / .eval() 같은 훈련 모드 설정도 자동으로 됨
+## state_dict()로 저장/불러오기도 쉬워짐
+
+######### nn.module에서 레이어란 ?  #############
+# 레이어는 계싼을 수행하는 단겔를 의미함
+# 딥러닝은 입력 데이터를 조금씩 바꿔가며 원하는 결과를 내는 '층(layer)'을 여러개 쌓아 만드는 모델
+
+##### 따라서 모델을ㅇ 만들 땐 무조건 mm.Module을 상속해서 씀
+
+super().__init__()
+
+## 부모 클래스인 nn.Module의 초기화 함수(__init__)를 실행시키는 코드
+## 즉, 부모 클래스의 기능을 자식 클래스에 활성화 시켜주는 것
+
+class DNN(nn.Module):
+    def __init__(self):
+        super().__init__()  # nn.Module이 가진 기능들 사용할 준비
+## 이 친구를 쓰지않게 되면, 모델이 제대로 도앚ㄱ하지않아서 PyTorch가 내 레이어들을 추적 못함
+
+##### hidden_dim = 64
+##### self.fc1 = nn.Linear(784, hidden_dim * 4)  # 784 → 256
+
+## fc1, 2, 3, classifier 의 역할(fc1~3이 각각의 레이어임)
+self.fc1 = nn.Linear(28*28, hidden_dim * 4)
+self.fc2 = nn.Linear(hidden_dim * 4, hidden_dim * 2)
+self.fc3 = nn.Linear(hidden_dim * 2, hidden_dim)
+self.classifier = nn.Linear(hidden_dim, num_classes)
+
+############### PyTorch는 nn.Module을 상속받으면, 이런 self.fc1, self.fc2처럼 self.로 정의된 애들을 자동으로 인식해서 관리해줌 ############
+
+nn.Linear(in_features, out_features)
+## in_features : 입력데이터의 차원
+## out_features : 출력 데이터의 차원
+## fc1 ~ fc3 : 은닉층(입력을 계속 변형하면서 특징을 잘 뽑아냄)
+## classifier : 최종 출력층(클래스 분류용)
+
+## 1. fc1 : 28*28 = 784 픽셀짜리 이미지를 펼쳐서 넣어줌
+## 2. fc1 : 784 차원 -> 큰 차원으로 확장( 더 많은 특징 만들기 )
+## 3. fc2,3 : 점점 줄이면서 중요한 정보만 남김
+## 4. classfier : 클래스 수 (예:  10개 숫자)만큼 결과 뽑음
+
+## Batch Normalization
+self.batchnorm1 = nn.BatchNorm1d(hidden_dim * 4)
+## 각 층마다 값들의 분포를 평균 0, 분산1로 규정화 해주는 것
+## 학습 중에 중간값이 너무 커지거나 작아지면 학습이 느려지고 불안정함
+## BatchNorm은 그걸 막아줘서 속도를 빠르게 하고, 일정한 분포로 유지시켜줌
+
+## 속도가 빨라지는 이유 : 
+## 각 레이어 출력의 분포가 일정하게 유지됨
+## 덕분에 큰 학습률로 학습해도 안정적임
+## 깊은 네트워크도 빠르게 수렴함
+
+nn.Identity()
+
+## 아무것도 안하는 연산자
+## if 문에서 옵션을 껐다 켰다 하려고 쓴는 것.
+
+self.batchnorm1 = nn.BatchNorm1d(...) if apply_batchnorm else nn.Identity()
+
+## True면 실제 BatchNorm 쓰고
+## False면 그냥 값 그대로 통과시킴
+## 이렇게 하면 코드를 간단하게 유지 가능
+
+###### BatchNorm에서 “분포를 평균 0, 분산 1로 정규화”란?  -------> 쉽게 말하면, 출력되는 값들을 평균 0, 분산 1의 표준 정규분포처럼 바꿔준다는 뜻
+
+self.dropout = nn.Dropout(p)
+## 학습 중 무작위로 뉴런을 꺼버리는 것 (즉, 일부 출력을 0으로 만들기)
+## 왜 그러냐?
+## 모든 뉴런이 너무 협업하면 -> 과적합
+## 일부러 랜덤하게 꺼주면 -> 다양한 조합을 학습하게 되어 일반화가 잘 됨
+## 학습할떄만 작동하고, 테스트할 떄는 꺼짐.
+
+self.activation = nn.ReLU()
+## 0보다 작으면 0, 크면 그대로인 비선형 함수
+ReLU(x) = max(0, x)
+## 비선형 함수가 왜 필요할까
+## 선형만 쓰면 아무리 층을 쌓아도 복잡한 구조 학습 못 하기 떄문
+## ReLU 같은 비선형 함수가 들어가야 모델이 복잡한 문제를 학습 가능
+
+####### 선형 함수: 직선처럼 비율대로 늘어나는 함수
+####### 비선형 함수: 꺾이거나 굽어지는 함수
+
+####### 딥러닝은 단순한 함수만 반복하면 아무리 레이어 쌓아도 똑같은 결과가 나와.
+####### 그래서 중간에 꺾이는 “비선형 함수”를 써야 복잡한 데이터도 잘 표현할 수 있어!
+
+####### ReLU는 계산이 빠르고, gradient vanishing(=미분이 작아져서 학습 멈춤) 문제도 줄어들어서 제일 많이 씀
+
+
+
+
+## forward 함수 해부하기
+
+def forward(self, x):
+    x = x.view(x.shape[0], -1)
+    x = self.batchnorm1(self.activation(self.fc1(x)))
+    x = self.dropout(x)
+    x = self.batchnorm2(self.activation(self.fc2(x)))
+    x = self.dropout(x)
+    x = self.batchnorm3(self.activation(self.fc3(x)))
+    x = self.classifier(x)
+    return x
+
+## 1. Flatten (펴기)
+x = x.view(x.shape[0], -1)
+##  28x28 이미지를 784개 픽셀로 펼침
+## x.shape[0]: 배치 크기 (예: 64)
+## -1: 알아서 계산해서 784로 만들어줌
+
+## 2. 은닉층 연산
+x = self.fc1(x)
+x = self.activation(x)
+x = self.batchnorm1(x)
+x = self.dropout(x)
+
+## fc1: 첫 번째 완전연결 레이어
+## activation: ReLU로 비선형성 부여
+## batchnorm: 정규화
+## dropout: 일부 뉴런 꺼줌
+
+## 이런 구조가 fc2, fc3까지 반복됨
+
+## 마지막 출력
+x = self.classifier(x)
+## 여기선 클래스 수만큼 결과를 내줌 (예: 10개 숫자 분류)
