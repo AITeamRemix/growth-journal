@@ -126,6 +126,11 @@ git clone https://github.com/AITeamRemix/growth-journal.git
     poetry install --with dev
     pre-commit install
     ```
+- 코드 스타일 관리를 위해서 아래 명령어를 실행합니다.
+
+    ```shell
+    pre-commit install
+    ```
 
 ### 3. 다음 과정을 반복
 
