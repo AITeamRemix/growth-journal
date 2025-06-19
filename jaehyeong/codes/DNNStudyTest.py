@@ -137,3 +137,49 @@ x = self.dropout(x)
 ## 마지막 출력
 x = self.classifier(x)
 ## 여기선 클래스 수만큼 결과를 내줌 (예: 10개 숫자 분류)
+
+######################################
+######## 반복형 구조 DNN 클래스 ########
+######################################
+class DNN(nn.Module):
+  def __init__(self, hidden_dims, num_classes, dropout_ratio,
+               apply_batchnorm, apply_dropout, apply_activation, set_super):
+    if set_super:
+      super().__init__()
+
+    ## 784→512, 512→256, 256→128 순서로 Fully Connected Layer가 쌓임
+    ## 즉, 은닉층을 3개 만들겠다는 뜻
+    self.hidden_dims = hidden_dims
+
+    ## 일반 Python list를 쓰면 안 되고 반드시 ModuleList여야 PyTorch가 내부 레이어를 추적함.
+    self.layers = nn.ModuleList()
+
+    ## 레이어 수가 많아도 hidden_dims만 바꾸면 구조 전체 자동 생성됨
+    ## apply_batchnorm, apply_activation, apply_dropout을 조합해서 모듈처럼 생성
+    ## Linear → BatchNorm → ReLU → Dropout 순으로 반복해서 쌓아
+    for i in range(len(hidden_dims) - 1):
+      self.layers.append(nn.Linear(hidden_dims[i], hidden_dims[i+1]))
+
+      if apply_batchnorm:
+        self.layers.append(nn.BatchNorm1d(hidden_dims[i+1]))
+
+      if apply_activation:
+        self.layers.append(nn.ReLU())
+
+      if apply_dropout:
+        self.layers.append(nn.Dropout(dropout_ratio))
+
+    self.classifier = nn.Linear(hidden_dims[-1], num_classes)
+    self.softmax = nn.LogSoftmax(dim=1)
+
+  ## self.layers에 담긴 모든 레이어를 순서대로 거침
+  ## 이 안에 Linear, BatchNorm, ReLU, Dropout 등이 이미 들어가 있음
+  def forward(self, x):
+    x = x.view(x.shape[0], -1)  # Flatten: [B, 1, 28, 28] → [B, 784]
+
+    ## ModuleList에 들어있는 모든 레이어를 순서대로 거침
+    for layer in self.layers:
+      x = layer(x)
+
+    x = self.classifier(x)
+    return self.softmax(x)
