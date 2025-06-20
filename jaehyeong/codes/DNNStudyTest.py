@@ -160,26 +160,163 @@ class DNN(nn.Module):
     for i in range(len(hidden_dims) - 1):
       self.layers.append(nn.Linear(hidden_dims[i], hidden_dims[i+1]))
 
+       # 선택적으로 배치 정규화 추가
       if apply_batchnorm:
         self.layers.append(nn.BatchNorm1d(hidden_dims[i+1]))
 
+      # 선택적으로 활성화 함수 추가 (ReLU 사용)
       if apply_activation:
         self.layers.append(nn.ReLU())
 
+      # 선택적으로 드롭아웃 추가 (과적합 방지용)
       if apply_dropout:
         self.layers.append(nn.Dropout(dropout_ratio))
 
+    # 은닉층들을 모두 지난 후 마지막 출력층 정의
+    # 마지막 hidden_dim → num_classes (예: 128 → 10)
     self.classifier = nn.Linear(hidden_dims[-1], num_classes)
     self.softmax = nn.LogSoftmax(dim=1)
 
   ## self.layers에 담긴 모든 레이어를 순서대로 거침
   ## 이 안에 Linear, BatchNorm, ReLU, Dropout 등이 이미 들어가 있음
   def forward(self, x):
+
+   ## """
+   ## Input and Output Summary
+
+   ## Input:
+   ##   x: [batch_size, 1, 28, 28]  ← MNIST처럼 28x28 흑백 이미지
+   ## Output:
+   ##   output: [batch_size, num_classes] ← 클래스별 확률 점수
+   ## """
+
+    # 2차원 이미지 텐서를 1차원 벡터로 펼침
     x = x.view(x.shape[0], -1)  # Flatten: [B, 1, 28, 28] → [B, 784]
 
     ## ModuleList에 들어있는 모든 레이어를 순서대로 거침
+    ## 앞서 구성한 self.layers에 들어 있는 Linear, BatchNorm, ReLU, Dropout 레이어를 순서대로 통과
     for layer in self.layers:
       x = layer(x)
 
-    x = self.classifier(x)
-    return self.softmax(x)
+    # 마지막 출력층 통과
+    x = self.classifier(x) # 예: [B, 128] → [B, 10]
+
+    # log-softmax로 확률처럼 해석 가능한 출력값 생성
+    output = self.softmax(x)
+
+    return output
+
+# --------------------------------------------
+# 모델 생성 및 더미 입력 데이터로 동작 테스트
+# --------------------------------------------
+
+# 기본 hidden_dim 설정 (계층 너비 기준)
+hidden_dim = 128
+
+# hidden_dims는 입력층부터 은닉층 구조 정의
+hidden_dims = [784, hidden_dim * 4, hidden_dim * 2, hidden_dim]
+# → [784, 512, 256, 128]
+
+
+# 앞서 만든 DNN 클래스 사용해서 모델 객체 생성
+model = DNN(
+    hidden_dims=hidden_dims,
+    num_classes=10,           # MNIST: 0~9 숫자 10개 분류
+    dropout_ratio=0.2,        # 드롭아웃 비율 20%
+    apply_batchnorm=True,     # 배치정규화 적용
+    apply_dropout=True,       # 드롭아웃 적용
+    apply_activation=True,    # ReLU 활성화 함수 적용
+    set_super=True            # nn.Module 초기화 실행
+)
+
+
+# 모델이 잘 작동하는지 확인: 더미 이미지 32개를 입력
+output = model(torch.randn((32, 1, 28, 28)))  # [B=32, C=1, H=28, W=28]
+
+
+# nn.Module의 초기화를 생략한 경우 (의도적 실수)
+model = DNN(
+    hidden_dims=hidden_dims,
+    num_classes=10,
+    dropout_ratio=0.2,
+    apply_batchnorm=True,
+    apply_dropout=True,
+    apply_activation=True,
+    set_super=False  # ❌ 이 경우 forward 등 내부 작동이 비정상일 수 있음
+)
+# 실제로 이 상태에서 model(...) 하면 AttributeError 혹은 작동 오류 발생
+
+
+
+# --------------------------------------------
+# weight_initialization() 함수 정의
+# --------------------------------------------
+
+# 모델의 모든 Linear 레이어 가중치를 초기화해주는 함수
+def weight_initialization(model, weight_init_method):
+    # model.modules()는 모델 안에 포함된 모든 레이어를 반환함 (중첩된 것도 포함)
+    for m in model.modules():
+        if isinstance(m, nn.Linear):  # Linear 레이어만 초기화 적용
+            
+            # 'gaussian' 방식: 평균 0, 표준편차 1의 정규분포로 가중치 초기화
+            if weight_init_method == 'gaussian':
+                nn.init.normal_(m.weight)
+
+            # 'xavier' 방식: Xavier 초기화 (sigmoid, tanh에 적합)
+            elif weight_init_method == 'xavier':
+                nn.init.xavier_normal_(m.weight)
+
+            # 'kaiming' 방식: Kaiming(He) 초기화 (ReLU에 적합)
+            elif weight_init_method == 'kaiming':
+                nn.init.kaiming_normal_(m.weight)
+
+            # 'zeros' 방식: 가중치를 모두 0으로 설정 (보통은 잘 안 씀)
+            elif weight_init_method == 'zeros':
+                nn.init.zeros_(m.weight)
+
+            # bias는 항상 0으로 초기화 (이건 보편적인 설정)
+            nn.init.zeros_(m.bias)  # bias는 항상 0으로 초기화
+
+    # 초기화가 완료된 model을 반환함
+    return model
+
+# --------------------------------------------
+# 초기화 함수 호출 예시 + 초기화된 가중치 출력
+# --------------------------------------------
+
+# 초기화 방식 설정: 'gaussian', 'xavier', 'kaiming', 'zeros' 중 택 1
+init_method = 'zeros'  # 적용할 초기화 방식 (예: xavier, kaiming 등)
+
+# model 객체에 weight_initialization 함수를 적용
+model = weight_initialization(model, init_method)
+
+# model 내부에 있는 모든 모듈 중, Linear인 첫 번째 층의 가중치를 출력
+for m in model.modules():
+    if isinstance(m, nn.Linear):  # Linear 층이면
+        print(m.weight.data)  # 초기화된 weight 값을 출력 (Tensor 형태)
+        break # 첫 번째 것만 확인하면 되므로 break
+
+## gaussian 방식 :
+# 장점 
+# 평균 0, 표준편차 1을 기본으로 하는 정규분포(가우시안 분포) 에서 값을 뽑아서 초기화
+# 가장 단순한 방식이고, 초창기 신경망에서 많이 씀
+
+# 단점 
+# 층이 깊어질수록 값이 너무 커지거나 너무 작아짐 → 폭발/소실 문제
+
+## xavier 방식 :
+# 입력과 출력 뉴런 수를 고려해 가중치 분포를 자동으로 조절
+# 분산을 1 / (입력노드수 + 출력노드수) 로 맞춰줌
+# sigmoid, tanh 같은 대칭 비선형 함수에 적합
+# 은닉층 깊어져도 폭발/소실이 덜함 → 안정적인 학습 가능
+
+## kaiming 방식 : 
+# ReLU 계열 함수(ReLU, LeakyReLU 등)에 최적화된 초기화 방법
+# ReLU는 음수 입력을 0으로 만들기 때문에, 활성화 값이 사라지는 문제가 발생함
+# 이를 보정하기 위해 입력 노드 수만 기준으로 분산을 조정
+
+## zeros 방식 : 
+# 모든 가중치를 0으로 설정
+# 모든 뉴런이 같은 값을 학습하게 됨 (symmetry problem)
+# 그래서 학습이 전혀 일어나지 않음
+# 실습이나 실험용으로는 쓸 수 있지만, 실전에서는 절대 ❌
