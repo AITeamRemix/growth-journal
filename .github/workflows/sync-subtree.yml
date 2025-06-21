@@ -1,8 +1,8 @@
 name: Sync Subtree
 on:
   schedule:
-    - cron: '0 0 * * *'  # 매일 자정(UTC)에 실행
-  workflow_dispatch:      # GitHub 웹에서 수동 실행 가능
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -11,7 +11,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # 전체 히스토리 가져오기 (subtree에 필요)
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Configure Git
         run: |
@@ -20,10 +21,17 @@ jobs:
           
       - name: Update subtree
         run: |
-          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash || echo "No changes to pull"
+          echo "Updating existing subtree..."
+          # -v 옵션 제거, 디버그가 필요하면 -d 사용
+          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
           
       - name: Push changes
         run: |
-          git push origin main
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected, pushing..."
+            git push origin main
+          else
+            echo "No changes to push"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
