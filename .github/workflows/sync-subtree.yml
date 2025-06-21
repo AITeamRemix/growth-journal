@@ -19,35 +19,19 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-      - name: Add or Update subtree
+      - name: Update subtree
         run: |
-          set -e  # 에러 발생 시 중단
-          
-          if [ ! -d "duhwan/codes/gx-train" ]; then
-            echo "Adding subtree for the first time..."
-            git subtree add --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
-          else
-            echo "Updating existing subtree..."
-            git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
-          fi
+          echo "Updating existing subtree..."
+          # -v 옵션 제거, 디버그가 필요하면 -d 사용
+          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
           
       - name: Push changes
         run: |
           if [ -n "$(git status --porcelain)" ]; then
+            echo "Changes detected, pushing..."
             git push origin main
           else
             echo "No changes to push"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Debug subtree operation
-        run: |
-          echo "Current directory contents:"
-          ls -la
-          echo "Git status:"
-          git status
-          echo "Git log (last 3 commits):"
-          git log --oneline -3
-          echo "Attempting subtree operation..."
-          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash -v
