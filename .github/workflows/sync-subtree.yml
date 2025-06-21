@@ -1,8 +1,8 @@
 name: Sync Subtree
 on:
   schedule:
-    - cron: '0 0 * * *'  # 매일 자정(UTC)에 실행
-  workflow_dispatch:      # GitHub 웹에서 수동 실행 가능
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   sync:
@@ -11,19 +11,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # 전체 히스토리 가져오기 (subtree에 필요)
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
           
       - name: Configure Git
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-      - name: Update subtree
+      - name: Add or Update subtree
         run: |
-          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash || echo "No changes to pull"
+          set -e  # 에러 발생 시 중단
+          
+          if [ ! -d "duhwan/codes/gx-train" ]; then
+            echo "Adding subtree for the first time..."
+            git subtree add --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
+          else
+            echo "Updating existing subtree..."
+            git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
+          fi
           
       - name: Push changes
         run: |
-          git push origin main
+          if [ -n "$(git status --porcelain)" ]; then
+            git push origin main
+          else
+            echo "No changes to push"
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Debug subtree operation
+        run: |
+          echo "Current directory contents:"
+          ls -la
+          echo "Git status:"
+          git status
+          echo "Git log (last 3 commits):"
+          git log --oneline -3
+          echo "Attempting subtree operation..."
+          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash -v
