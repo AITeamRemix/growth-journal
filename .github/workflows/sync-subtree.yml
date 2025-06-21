@@ -1,0 +1,29 @@
+name: Sync Subtree
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 매일 자정(UTC)에 실행
+  workflow_dispatch:      # GitHub 웹에서 수동 실행 가능
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # 전체 히스토리 가져오기 (subtree에 필요)
+          
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+      - name: Update subtree
+        run: |
+          git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash || echo "No changes to pull"
+          
+      - name: Push changes
+        run: |
+          git push origin main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
