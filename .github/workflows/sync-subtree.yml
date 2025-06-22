@@ -18,6 +18,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Store current HEAD
+        run: echo "OLD_HEAD=$(git rev-parse HEAD)" >> $GITHUB_ENV
           
       - name: Update subtree
         run: |
@@ -25,13 +28,13 @@ jobs:
           # -v 옵션 제거, 디버그가 필요하면 -d 사용
           git subtree pull --prefix=duhwan/codes/gx-train https://github.com/korea202/gx-train.git main --squash
           
-      - name: Push changes
+      - name: Push changes if updated
         run: |
-          if [ -n "$(git status --porcelain)" ]; then
-            echo "Changes detected, pushing..."
+          if [ "$OLD_HEAD" != "$(git rev-parse HEAD)" ]; then
+            echo "Subtree updated, pushing changes..."
             git push origin main
           else
-            echo "No changes to push"
+            echo "No changes in subtree"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
